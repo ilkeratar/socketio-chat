@@ -9,7 +9,11 @@ interface ChildProps {
 const Room = ({username,setUsername,room,setRoom,setChatScreen,socket}:ChildProps) => {
 
     const sendRoom=()=>{
-        socket.emit('room',room);
+        let data = {
+            roomName:room,
+            nickname:username
+        }
+        socket.emit('joinRoom',data);
         setChatScreen(true);
     }
 

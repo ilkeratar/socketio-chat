@@ -3,30 +3,48 @@ import MessageBox from "../components/MessageBox.tsx";
 
 interface ChildProps {
     username: string;
-    setUsername: React.Dispatch<React.SetStateAction<string>>;
     room: string;
-    setRoom: React.Dispatch<React.SetStateAction<string>>;
-    setChatScreen: React.Dispatch<React.SetStateAction<boolean>>;
     socket:any;
 }
 const Chat = ({username,room,socket}:ChildProps) => {
     const [message, setMessage] = useState("");
-    const [messageList, setMessageList] = useState([])
+    const [messageList, setMessageList] = useState([]);
+    const [myUserId, setMyUserId] = useState<string | null>(null);
     const sendMessage=async ()=>{
         const messageContent={
             username:username,
             message:message,
-            room:room,
-            date:new Date(Date.now()).getHours() + ':' + new Date(Date.now()).getMinutes()
+            room:room
         }
-        await socket.emit('message',messageContent);
-        setMessageList((prev):any=>[...prev,messageContent])
+        await socket.emit('sendMessage',messageContent);
+
         setMessage("");
     }
     useEffect(() => {
+        socket.on('roomHistory',(data:any[])=>{
+            const formattedData = data.map(msg=>({
+                username:msg.sender,
+                message:msg.content,
+                date:new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            }))
+            setMessageList((prev):any=>[...prev,...formattedData]);
+        })
+        socket.on('yourUserId',(id:any)=>{
+            setMyUserId(id);
+        })
         socket.on('messageReturn',(data:any)=>{
             setMessageList((prev):any=>[...prev,data]);
-        })
+        });
+
+        socket.on('message',(data:any)=>{
+            const formattedData = {
+                username: data.sender,
+                message: data.content,
+                date:new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            };
+            console.log("username: "+username + ".l.l. msgusername: "+formattedData.username);
+            setMessageList((prev):any=>[...prev,formattedData]);
+        });
     }, [socket]);
 
     return (
@@ -34,11 +52,12 @@ const Chat = ({username,room,socket}:ChildProps) => {
             <div className={"w-2/3 h-[600px] md:w-[550px] bg-gray-500 relative"}>
                 <div className={"w-full h-16 bg-gray-700 flex items-center p-2"}>
                     <div className="w-12 h-12 bg-white rounded-full "></div>
+                    <div className={"text-xl text-white ml-4"}>{room}</div>
                 </div>
-                <div className={"w-full h-[400px] overflow-y-auto"}>
+                <div className={"w-full h-[470px] overflow-y-auto"}>
                     {
                         messageList && messageList.map((msg:any,i:number)=>(
-                            <MessageBox key={i} username={username} msgUsername={msg.username} message={msg.message} date={msg.date} />
+                            <MessageBox key={i} myUserId={myUserId} msgUsername={msg.username} message={msg.message} date={msg.date} />
                         ))
                     }
                 </div>
